@@ -1,0 +1,103 @@
+name: Release security build
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/release-security.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-v0.7.39-security.1
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'risaddex/dsh-gitea' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: v0.7.39-security.1
+    steps:
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verify release identity
+        run: |
+          set -euo pipefail
+          test "$(node -p "require('./package.json').version")" = "0.7.39-security.1"
+          test "$(node -p "require('./package.json').private")" = "true"
+          git merge-base --is-ancestor b85475b9482b03e9af41bff34ab4faec4e8baf22 "$GITHUB_SHA"
+      - name: Install and validate
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --legacy-peer-deps
+          npm test
+          npm run test:leaks
+          npm audit --omit=dev --legacy-peer-deps
+          git diff --exit-code
+      - name: Build package and checksum
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          npm pack --ignore-scripts --pack-destination .artifacts --json > .artifacts/pack.json
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import { readFileSync } from 'node:fs'
+          const [pack] = JSON.parse(readFileSync('.artifacts/pack.json', 'utf8'))
+          assert.equal(pack.filename, 'goodandready-dsh-gitea-0.7.39-security.1.tgz')
+          const files = pack.files.map(file => file.path)
+          assert(files.includes('lib/action-card-styles.js'))
+          assert(files.includes('docs/INSTALACAO-LOCAL.md'))
+          assert(!files.some(file => /(^|\/)(\.env(?:\..*)?|credentials\.yaml)$|\.(pem|key)$/.test(file)))
+          JS
+          cd .artifacts
+          sha256sum goodandready-dsh-gitea-0.7.39-security.1.tgz > SHA256SUMS
+      - name: Publish tag and prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Refusing to replace an existing release tag."
+            exit 1
+          fi
+          cat > .artifacts/RELEASE-NOTES.md <<'NOTES'
+          Versão de segurança do fork risaddex/dsh-gitea, baseada no upstream v0.7.39.
+
+          Correções:
+          - Validação de remoto e branch antes de executar comandos Git; push local exige wrapper configurado e remoto existente.
+          - Payloads de webhooks rejeitados não são retidos nem podem ser reproduzidos.
+          - Replay e limpeza exigem confirmação; replay não dispara notificações externas.
+          - Filtragem ampliada de segredos, CSS embarcado nos cartões, serialização segura e links HTTP(S).
+          - Atualização automática pelo npm desativada para preservar as correções.
+
+          Instalação:
+          1. Baixe goodandready-dsh-gitea-0.7.39-security.1.tgz e SHA256SUMS desta release.
+          2. Confira com sha256sum -c SHA256SUMS (Linux) ou shasum -a 256 -c SHA256SUMS (macOS).
+          3. Siga docs/INSTALACAO-LOCAL.md, incluído no código e no pacote. Instale o tarball por caminho absoluto com dsh plugin --profile web add /caminho/absoluto/pacote.tgz --ignore-scripts.
+
+          Validação: 15 testes de regressão, scanner de segredos, npm audit e conferência do conteúdo do pacote neste workflow.
+
+          Limites: não houve teste completo com DSH Web e Gitea reais. A filtragem de segredos usa padrões conhecidos; assinantes locais ainda podem reagir aos metadados de replay. Esta é uma prerelease para validação local, sem publicação no npm.
+          NOTES
+          gh release create "$RELEASE_TAG" \
+            .artifacts/goodandready-dsh-gitea-0.7.39-security.1.tgz \
+            .artifacts/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease --latest=false \
+            --title "v0.7.39-security.1 — correções de segurança" \
+            --notes-file .artifacts/RELEASE-NOTES.md
+
