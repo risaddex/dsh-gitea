@@ -1,6 +1,7 @@
 {
   "name": "@goodandready/dsh-gitea",
-  "version": "0.7.39",
+  "version": "0.7.39-security.1",
+  "private": true,
   "description": "Enterprise Gitea & Forgejo integration for DeepSeek Harness: 20+ issue/PR/worktree tools and a real-time Git status chip in chat.",
   "type": "module",
   "main": "lib/index.js",
@@ -13,6 +14,7 @@
   "files": [
     "lib/",
     "assets/",
+    "docs/",
     "cordis.patch.yml",
     "README.md",
     "README.ru.md",
@@ -34,11 +36,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GooDAnDReaDY/dsh-gitea.git"
+    "url": "git+https://github.com/risaddex/dsh-gitea.git"
   },
-  "homepage": "https://github.com/GooDAnDReaDY/dsh-gitea#readme",
+  "homepage": "https://github.com/risaddex/dsh-gitea#readme",
   "bugs": {
-    "url": "https://github.com/GooDAnDReaDY/dsh-gitea/issues"
+    "url": "https://github.com/risaddex/dsh-gitea/issues"
   },
   "license": "MIT",
   "dsh": {
@@ -67,6 +69,6 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "semver": "^7.8.5"
+    "semver": "7.8.6"
   }
 }

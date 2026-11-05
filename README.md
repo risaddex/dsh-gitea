@@ -1,5 +1,13 @@
 # 📦 @goodandready/dsh-gitea
 
+> **Security fork — `0.7.39-security.1`:** based on upstream `v0.7.39`.
+> Install a locally built tarball from this fork, not the upstream npm package.
+> [Runbook de instalação local (Português)](docs/INSTALACAO-LOCAL.md).
+> This build validates mirror targets, requires a wrapper for local mirror pushes,
+> rejects replay of unauthenticated webhooks, improves secret filtering and ships
+> offline card styles. Automatic npm updates are disabled. The original project
+> documentation below describes additional features outside this focused review.
+
 <div align="center">
 
 <h3>Enterprise Gitea & Forgejo Integration Suite for DeepSeek Harness</h3>
@@ -230,10 +238,11 @@ The drawer interface includes a dedicated **Gitea Hub** backed by `/dsh-gitea/hu
 
 ## 📦 Installation
 
-Install via DeepSeek Harness CLI:
+For this security fork, follow the [local installation runbook](docs/INSTALACAO-LOCAL.md).
+After building the reviewed tarball, install it via DeepSeek Harness CLI:
 
 ```bash
-dsh plugin --profile web add @goodandready/dsh-gitea
+dsh plugin --profile web add /absolute/path/goodandready-dsh-gitea-0.7.39-security.1.tgz --ignore-scripts
 ```
 
 Restart DSH Web UI and perform a hard-refresh (`Ctrl+F5` or `Cmd+Shift+R`).
@@ -364,7 +373,9 @@ const stop = ctx.giteaEvents.subscribe((event) => {
 
 ### Plugin Auto-Updater
 
-The settings card provides a one-click auto-updater powered by `/api/dsh-gitea/update`:
+The upstream settings card provides an auto-updater powered by `/api/dsh-gitea/update`.
+**This fork disables installation through that endpoint** to prevent replacing the
+reviewed code with an upstream npm version. The upstream behavior is documented below:
 - **Status check**: Checks npm registry for updates without SSH or command-line access.
 - **Secure installation**: Accepts write requests only from local loopback origins with `x-dsh-plugin-update: 1`.
 - **Safe dependencies**: Honors npm release quarantine rules.
